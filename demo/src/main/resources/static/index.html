@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>User CRUD</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 30px; }
+    h1 { color: #333; margin-bottom: 24px; }
+
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      margin-bottom: 24px;
+    }
+    .card h2 { font-size: 16px; color: #555; margin-bottom: 16px; }
+
+    .form-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group label { font-size: 13px; color: #666; }
+    input[type="text"], input[type="email"], input[type="number"] {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      width: 200px;
+    }
+    button {
+      padding: 8px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    button:hover { opacity: 0.85; }
+    .btn-primary { background: #4f87f5; color: #fff; }
+    .btn-warning { background: #f0a500; color: #fff; }
+    .btn-danger  { background: #e74c3c; color: #fff; }
+    .btn-secondary { background: #aaa; color: #fff; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    thead th { background: #f7f8fa; padding: 10px 14px; text-align: left; color: #555; border-bottom: 2px solid #eee; }
+    tbody td { padding: 10px 14px; border-bottom: 1px solid #f0f0f0; color: #333; }
+    tbody tr:hover { background: #fafbff; }
+
+    #msg { margin-top: 12px; font-size: 14px; color: #27ae60; min-height: 20px; }
+  </style>
+</head>
+<body>
+
+<h1>User 관리</h1>
+
+<!-- 등록 / 수정 폼 -->
+<div class="card">
+  <h2 id="formTitle">사용자 등록</h2>
+  <div class="form-row">
+    <input type="hidden" id="userId">
+    <div class="form-group">
+      <label>이름</label>
+      <input type="text" id="username" placeholder="이름">
+    </div>
+    <div class="form-group">
+      <label>이메일</label>
+      <input type="email" id="email" placeholder="이메일">
+    </div>
+    <button class="btn-primary" onclick="submitForm()">저장</button>
+    <button class="btn-secondary" onclick="resetForm()">초기화</button>
+  </div>
+  <div id="msg"></div>
+</div>
+
+<!-- 목록 -->
+<div class="card">
+  <h2>사용자 목록</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>이름</th>
+        <th>이메일</th>
+        <th>등록일시</th>
+        <th>작업</th>
+      </tr>
+    </thead>
+    <tbody id="userTableBody"></tbody>
+  </table>
+</div>
+
+<script>
+  const API = '/api/users';
+
+  async function loadUsers() {
+    const res = await fetch(API);
+    const users = await res.json();
+    const tbody = document.getElementById('userTableBody');
+    tbody.innerHTML = '';
+    users.forEach(u => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${u.id}</td>
+        <td>${u.username}</td>
+        <td>${u.email}</td>
+        <td>${u.createdAt ? u.createdAt.replace('T', ' ').substring(0, 19) : ''}</td>
+        <td>
+          <button class="btn-warning" onclick="editUser(${u.id}, '${u.username}', '${u.email}')">수정</button>
+          &nbsp;
+          <button class="btn-danger" onclick="deleteUser(${u.id})">삭제</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function submitForm() {
+    const id = document.getElementById('userId').value;
+    const username = document.getElementById('username').value.trim();
+    const email = document.getElementById('email').value.trim();
+
+    if (!username || !email) { showMsg('이름과 이메일을 입력하세요.', 'red'); return; }
+
+    const body = JSON.stringify({ username, email });
+    const headers = { 'Content-Type': 'application/json' };
+
+    if (id) {
+      await fetch(`${API}/${id}`, { method: 'PUT', headers, body });
+      showMsg('수정되었습니다.');
+    } else {
+      await fetch(API, { method: 'POST', headers, body });
+      showMsg('등록되었습니다.');
+    }
+
+    resetForm();
+    loadUsers();
+  }
+
+  function editUser(id, username, email) {
+    document.getElementById('userId').value = id;
+    document.getElementById('username').value = username;
+    document.getElementById('email').value = email;
+    document.getElementById('formTitle').textContent = '사용자 수정';
+  }
+
+  async function deleteUser(id) {
+    if (!confirm('삭제하시겠습니까?')) return;
+    await fetch(`${API}/${id}`, { method: 'DELETE' });
+    showMsg('삭제되었습니다.');
+    loadUsers();
+  }
+
+  function resetForm() {
+    document.getElementById('userId').value = '';
+    document.getElementById('username').value = '';
+    document.getElementById('email').value = '';
+    document.getElementById('formTitle').textContent = '사용자 등록';
+  }
+
+  function showMsg(text, color = '#27ae60') {
+    const el = document.getElementById('msg');
+    el.style.color = color;
+    el.textContent = text;
+    setTimeout(() => el.textContent = '', 3000);
+  }
+
+  loadUsers();
+</script>
+
+</body>
+</html>
